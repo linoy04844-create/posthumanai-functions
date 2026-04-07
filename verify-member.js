@@ -1,23 +1,19 @@
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 
-exports.handler = async (event) => {
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: 'Method Not Allowed' };
+module.exports = async (req, res) => {
+  if (req.method !== 'POST') {
+    return res.status(405).send('Method Not Allowed');
   }
 
   try {
-    const { email, password } = JSON.parse(event.body);
+    const { email, password } = req.body;
 
     if (!email || !password) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ success: false })
-      };
+      return res.status(400).json({ success: false });
     }
 
-    // חיפוש הלקוח ב-Supabase
-    const res = await fetch(
+    const response = await fetch(
       `${SUPABASE_URL}/rest/v1/members?email=eq.${encodeURIComponent(email.toLowerCase())}&password=eq.${encodeURIComponent(password)}&select=id`,
       {
         headers: {
@@ -27,20 +23,13 @@ exports.handler = async (event) => {
       }
     );
 
-    const data = await res.json();
+    const data = await response.json();
     const isValid = Array.isArray(data) && data.length > 0;
 
-    return {
-      statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ success: isValid })
-    };
+    return res.status(200).json({ success: isValid });
 
   } catch (err) {
     console.error('Verify error:', err);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ success: false, error: err.message })
-    };
+    return res.status(500).json({ success: false, error: err.message });
   }
 };
