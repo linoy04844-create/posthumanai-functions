@@ -64,19 +64,28 @@ async function sendWelcomeEmail(email, name, password) {
   return response.ok;
 }
 
-exports.handler = async (event) => {
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: 'Method Not Allowed' };
+module.exports = async (req, res) => {
+  if (req.method !== 'POST') {
+    return res.status(405).send('Method Not Allowed');
   }
 
   try {
-    const params = new URLSearchParams(event.body);
+    let body = '';
+    if (typeof req.body === 'string') {
+      body = req.body;
+    } else if (Buffer.isBuffer(req.body)) {
+      body = req.body.toString();
+    } else {
+      body = new URLSearchParams(req.body).toString();
+    }
+
+    const params = new URLSearchParams(body);
     const email = params.get('email');
     const name = params.get('full_name') || '';
     const saleId = params.get('sale_id');
 
     if (!email || !saleId) {
-      return { statusCode: 400, body: 'Missing required fields' };
+      return res.status(400).send('Missing required fields');
     }
 
     const password = generatePassword();
@@ -85,16 +94,10 @@ exports.handler = async (event) => {
 
     console.log(`New member: ${email} | Password: ${password}`);
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: true })
-    };
+    return res.status(200).json({ success: true });
 
   } catch (err) {
     console.error('Webhook error:', err);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: err.message })
-    };
+    return res.status(500).json({ error: err.message });
   }
 };
